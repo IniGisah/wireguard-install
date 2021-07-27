@@ -49,6 +49,9 @@ function checkOS() {
 		OS=centos
 	elif [[ -e /etc/arch-release ]]; then
 		OS=arch
+    elif [[ -e /etc/oracle-release ]]; then
+        source /etc/os-release
+        OS=oracle
 	else
 		echo "Looks like you aren't running this installer on a Debian, Ubuntu, Fedora, CentOS or Arch Linux system"
 		exit 1
@@ -149,6 +152,20 @@ function installWireGuard() {
 		yum -y install kmod-wireguard wireguard-tools iptables qrencode
 	elif [[ ${OS} == 'arch' ]]; then
 		pacman -S --needed --noconfirm wireguard-tools qrencode
+    elif [[ ${OS} == 'oracle' ]]; then
+        if [[ ${VERSION_ID%.*} -eq 7 ]]; then
+            yum -y install oraclelinux-developer-release-el7
+            yum-config-manager --disable ol7_developer
+            yum-config-manager --enable ol7_developer_UEKR6
+            yum-config-manager --save --setopt=ol7_developer_UEKR6.includepkgs='wireguard-tools*'
+            yum -y install wireguard-tools qrencode
+        elif [[ ${VERSION_ID%.*} -eq 8 ]]; then
+            dnf install -y oraclelinux-developer-release-el8
+            dnf config-manager --disable ol8_developer
+            dnf config-manager --enable ol8_developer_UEKR6
+            dnf config-manager --save --setopt=ol8_developer_UEKR6.includepkgs='wireguard-tools*'
+            dnf install -y wireguard-tools qrencode
+        fi
 	fi
 
 	# Make sure the directory exists (this does not seem the be the case on fedora)
@@ -375,6 +392,14 @@ function uninstallWg() {
 			yum -y autoremove
 		elif [[ ${OS} == 'arch' ]]; then
 			pacman -Rs --noconfirm wireguard-tools qrencode
+                elif [[ ${OS} == 'oracle' ]]; then
+                    if [[ ${VERSION_ID%.*} -eq 7 ]]; then
+                        yum -y remove oraclelinux-developer-release-el7
+                        yum -y remove wireguard-tools qrencode
+                    elif [[ ${VERSION_ID%.*} -eq 8 ]]; then
+                        dnf remove -y oraclelinux-developer-release-el8
+                        dnf remove -y wireguard-tools qrencode
+                    fi
 		fi
 
 		rm -rf /etc/wireguard
